@@ -13,7 +13,7 @@
 package scala
 package reflect.internal.util
 
-import scala.collection.{ mutable, immutable }
+import scala.collection.{ mutable, immutable, BitSet }
 import scala.annotation.tailrec
 import mutable.ListBuffer
 import java.util.NoSuchElementException
@@ -379,6 +379,17 @@ trait Collections {
 
   @tailrec final def sumSize(xss: List[List[_]], acc: Int): Int =
     if (xss.isEmpty) acc else sumSize(xss.tail, acc + xss.head.size)
+
+  final def toBooleanArray(length: Int, bitSet: BitSet): Array[Boolean] = {
+    val res = new Array[Boolean](length)
+    var ix = 0
+    while (ix < res.length){
+      res(ix) = bitSet(ix)
+      ix += 1
+    }
+    res
+  }
+
 }
 
 object Collections extends Collections

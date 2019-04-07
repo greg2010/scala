@@ -422,12 +422,19 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
     private class MethodMetadata(symbol: MethodSymbol) {
       val paramCount = sumSize(symbol.paramss, 0)
       private val vcMetadata = new Array[DerivedValueClassMetadata](paramCount)
-      val isByName: BitSet = new BitSet(initSize = paramCount)
+      private[this] val areByName: BitSet = new BitSet(initSize = paramCount)
 
       foreachWithIndex(symbol.paramss.iterator.flatten) { (p, ix) =>
-        if (isByNameParam(p.info)) isByName.add(ix)
+        if (isByNameParam(p.info)) areByName.add(ix)
         vcMetadata(ix) = new DerivedValueClassMetadata(p.info)
       }
+
+      /* We are keeping a lazy value of the old `isByName`, an `Array[Boolean], for backwards-compatibility reasons.
+       However, we recommend using the more efficient `isArgByName` instead.`*/
+      @deprecated("use isArgByName instead", "2.12.9")
+      lazy val isByName: Array[Boolean] = toBooleanArray(vcMetadata.length, areByName)
+
+      private[JavaMirrors] def isArgByName(i: Int): Boolean = areByName(i)
       def isDerivedValueClass(i: Int): Boolean = vcMetadata(i).isDerivedValueClass
       def paramUnboxers(i: Int) = vcMetadata(i).unboxer
       val ret = new DerivedValueClassMetadata(symbol.returnType)
@@ -446,7 +453,7 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
           val arg = args(i)
           args1(i) = (
             if (i >= paramCount)             arg                           // don't transform varargs
-            else if (isByName(i))            () => arg                     // don't transform by-name value class params
+            else if (isArgByName(i))         () => arg                     // don't transform by-name value class params
             else if (isDerivedValueClass(i)) paramUnboxers(i).invoke(arg)  // do get the underlying value
             else                             arg                           // don't molest anything else
           )
